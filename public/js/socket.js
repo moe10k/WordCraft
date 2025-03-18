@@ -30,6 +30,33 @@ function getSocket() {
 }
 
 /**
+ * Get the socket instance safely, checking authentication first
+ * @returns {Socket} The socket.io instance
+ */
+function getSafeSocket() {
+    // Check for token
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    if (!token) {
+        console.error('No authentication token found');
+        // Redirect to login if no token
+        window.location.href = '/index.html';
+        return null;
+    }
+    
+    // Check for user data
+    const user = localStorage.getItem('user');
+    if (!user) {
+        console.error('No user data found');
+        // Redirect to login if no user data
+        window.location.href = '/index.html';
+        return null;
+    }
+    
+    // Get or create socket
+    return getSocket();
+}
+
+/**
  * Set up socket event listeners
  */
 function setupSocketEvents() {

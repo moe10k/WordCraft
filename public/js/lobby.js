@@ -2,23 +2,27 @@
 // This file manages the lobby UI, socket events, and lobby management
 
 // DOM Elements
-const lobbyContainer = document.getElementById('lobby-container');
+const lobbyContainer = document.querySelector('.lobby-container');
 const lobbyNameElement = document.getElementById('lobby-name');
-const playersContainer = document.getElementById('lobby-players-container');
+const playersContainer = document.getElementById('players-container');
 const readyBtn = document.getElementById('ready-btn');
 const startGameBtn = document.getElementById('start-game-btn');
 const leaveLobbyBtn = document.getElementById('leave-lobby-btn');
-const chatContainer = document.getElementById('lobby-chat-container');
-const chatMessages = document.getElementById('lobby-chat-messages');
-const chatInput = document.getElementById('lobby-chat-input');
-const chatSendBtn = document.getElementById('lobby-chat-send-btn');
+const chatContainer = document.getElementById('chat-container');
+const chatMessages = document.getElementById('chat-messages');
+const chatInput = document.getElementById('chat-input');
+const chatSendBtn = document.getElementById('chat-send-btn');
 const lobbySettingsBtn = document.getElementById('lobby-settings-btn');
 const lobbySettingsModal = document.getElementById('lobby-settings-modal');
-const closeSettingsBtn = document.getElementById('close-settings-btn');
+const closeModalButtons = document.querySelectorAll('.close-modal');
 const lobbySettingsForm = document.getElementById('lobby-settings-form');
 const lobbyCodeElement = document.getElementById('lobby-code');
 const copyCodeBtn = document.getElementById('copy-code-btn');
 const lobbyMessageElement = document.getElementById('lobby-message');
+const loadingOverlay = document.getElementById('loading-overlay');
+const onlineCountElement = document.getElementById('online-count');
+const settingsPrivateLobbyCheckbox = document.getElementById('settings-private-lobby');
+const settingsPasswordGroup = document.getElementById('settings-password-group');
 
 // Lobby state variables
 let lobbyId = null;
@@ -29,10 +33,13 @@ let players = [];
 let user = null;
 
 // Get the socket instance from socket.js
-const socket = getSocket();
+const socket = getSafeSocket();
 
 // Initialize the lobby
 function initLobby() {
+    // Initialize particles
+    initParticles();
+    
     // Get the lobby ID from the URL
     const urlParams = new URLSearchParams(window.location.search);
     lobbyId = urlParams.get('id');
@@ -46,10 +53,19 @@ function initLobby() {
     }
     
     // Get user data from localStorage
-    user = JSON.parse(localStorage.getItem('user'));
+    const userStr = localStorage.getItem('user');
+    if (!userStr) {
+        showMessage('User data not found. Please log in again.', 'error');
+        setTimeout(() => {
+            window.location.href = '/index.html';
+        }, 3000);
+        return;
+    }
     
-    if (!user) {
-        showMessage('User not logged in. Redirecting to login...', 'error');
+    try {
+        user = JSON.parse(userStr);
+    } catch (err) {
+        showMessage('Invalid user data. Please log in again.', 'error');
         setTimeout(() => {
             window.location.href = '/index.html';
         }, 3000);
@@ -59,11 +75,120 @@ function initLobby() {
     // Set up event listeners
     setupEventListeners();
     
-    // Join the lobby room
+    // Join the lobby via socket
     joinLobby();
     
     // Load lobby data
     loadLobbyData();
+}
+
+// Initialize particles background
+function initParticles() {
+    particlesJS('particles-background', {
+        particles: {
+            number: {
+                value: 80,
+                density: {
+                    enable: true,
+                    value_area: 800
+                }
+            },
+            color: {
+                value: '#00c7fc'
+            },
+            shape: {
+                type: 'circle',
+                stroke: {
+                    width: 0,
+                    color: '#000000'
+                },
+                polygon: {
+                    nb_sides: 5
+                }
+            },
+            opacity: {
+                value: 0.5,
+                random: false,
+                anim: {
+                    enable: false,
+                    speed: 1,
+                    opacity_min: 0.1,
+                    sync: false
+                }
+            },
+            size: {
+                value: 3,
+                random: true,
+                anim: {
+                    enable: false,
+                    speed: 40,
+                    size_min: 0.1,
+                    sync: false
+                }
+            },
+            line_linked: {
+                enable: true,
+                distance: 150,
+                color: '#00c7fc',
+                opacity: 0.4,
+                width: 1
+            },
+            move: {
+                enable: true,
+                speed: 2,
+                direction: 'none',
+                random: false,
+                straight: false,
+                out_mode: 'out',
+                bounce: false,
+                attract: {
+                    enable: false,
+                    rotateX: 600,
+                    rotateY: 1200
+                }
+            }
+        },
+        interactivity: {
+            detect_on: 'canvas',
+            events: {
+                onhover: {
+                    enable: true,
+                    mode: 'grab'
+                },
+                onclick: {
+                    enable: true,
+                    mode: 'push'
+                },
+                resize: true
+            },
+            modes: {
+                grab: {
+                    distance: 140,
+                    line_linked: {
+                        opacity: 1
+                    }
+                },
+                bubble: {
+                    distance: 400,
+                    size: 40,
+                    duration: 2,
+                    opacity: 8,
+                    speed: 3
+                },
+                repulse: {
+                    distance: 200,
+                    duration: 0.4
+                },
+                push: {
+                    particles_nb: 4
+                },
+                remove: {
+                    particles_nb: 2
+                }
+            }
+        },
+        retina_detect: true
+    });
 }
 
 // Set up event listeners
@@ -80,7 +205,7 @@ function setupEventListeners() {
     // Chat send button
     chatSendBtn.addEventListener('click', sendChatMessage);
     
-    // Chat input - send on Enter key
+    // Chat input (Enter key)
     chatInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             sendChatMessage();
@@ -89,25 +214,90 @@ function setupEventListeners() {
     
     // Lobby settings button
     lobbySettingsBtn.addEventListener('click', () => {
-        lobbySettingsModal.style.display = 'flex';
+        // Only populate form if user is host
+        if (isHost && lobbyData) {
+            document.getElementById('settings-lobby-name').value = lobbyData.name;
+            document.getElementById('settings-max-players').value = lobbyData.maxPlayers;
+            settingsPrivateLobbyCheckbox.checked = lobbyData.isPrivate;
+            document.getElementById('settings-round-time').value = lobbyData.roundTime || 30;
+            document.getElementById('settings-rounds').value = lobbyData.rounds || 3;
+            
+            if (lobbyData.isPrivate) {
+                settingsPasswordGroup.style.display = 'block';
+            } else {
+                settingsPasswordGroup.style.display = 'none';
+            }
+        }
+        openModal(lobbySettingsModal);
     });
     
-    // Close settings button
-    closeSettingsBtn.addEventListener('click', () => {
-        lobbySettingsModal.style.display = 'none';
-    });
-    
-    // Lobby settings form
+    // Settings form
     lobbySettingsForm.addEventListener('submit', updateLobbySettings);
     
     // Copy lobby code button
     copyCodeBtn.addEventListener('click', copyLobbyCode);
     
-    // Close modal when clicking outside
-    window.addEventListener('click', (e) => {
-        if (e.target === lobbySettingsModal) {
-            lobbySettingsModal.style.display = 'none';
+    // Private lobby checkbox in settings
+    settingsPrivateLobbyCheckbox.addEventListener('change', () => {
+        if (settingsPrivateLobbyCheckbox.checked) {
+            settingsPasswordGroup.style.display = 'block';
+        } else {
+            settingsPasswordGroup.style.display = 'none';
         }
+    });
+    
+    // Close modal buttons
+    closeModalButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            closeAllModals();
+        });
+    });
+    
+    // Cancel settings button
+    document.getElementById('cancel-settings').addEventListener('click', () => {
+        closeAllModals();
+    });
+    
+    // Socket event listeners
+    socket.on('lobbyData', updateLobbyData);
+    socket.on('lobbyMessage', (message) => {
+        addChatMessage('System', message, true);
+    });
+    socket.on('chatMessage', (data) => {
+        addChatMessage(data.username, data.message);
+    });
+    socket.on('gameStarting', () => {
+        showMessage('Game is starting...', 'success');
+        setTimeout(() => {
+            window.location.href = `/game.html?id=${lobbyId}`;
+        }, 2000);
+    });
+    socket.on('onlineCount', (count) => {
+        if (onlineCountElement) {
+            onlineCountElement.textContent = count;
+        }
+    });
+}
+
+// Helper function to open modals
+function openModal(modal) {
+    if (modal) {
+        modal.style.display = 'flex';
+    }
+}
+
+// Helper function to close modals
+function closeModal(modal) {
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Close all modals
+function closeAllModals() {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        closeModal(modal);
     });
 }
 
@@ -365,7 +555,7 @@ function updateLobbySettings(e) {
     .then(data => {
         if (data.success) {
             showMessage('Lobby settings updated successfully', 'success');
-            lobbySettingsModal.style.display = 'none';
+            closeAllModals();
         } else {
             showMessage(data.message || 'Failed to update lobby settings', 'error');
         }
@@ -401,31 +591,6 @@ function showMessage(message, type = 'info') {
         }, 5000);
     }
 }
-
-// Socket event handlers
-socket.on('lobby:user-joined', (data) => {
-    addChatMessage('System', `${data.username} joined the lobby`, true);
-});
-
-socket.on('lobby:user-left', (data) => {
-    addChatMessage('System', `${data.username} left the lobby`, true);
-});
-
-socket.on('lobby:chat-message', (data) => {
-    addChatMessage(data.username, data.message);
-});
-
-socket.on('lobby:updated', (data) => {
-    updateLobbyData(data.lobby);
-});
-
-socket.on('game:started', (data) => {
-    window.location.href = `/game.html?id=${data.game._id}`;
-});
-
-socket.on('lobby:error', (data) => {
-    showMessage(data.message, 'error');
-});
 
 // Initialize the lobby when the page loads
 document.addEventListener('DOMContentLoaded', initLobby);
