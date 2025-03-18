@@ -12,7 +12,7 @@
   
   <div class="auth-container">
     <div class="auth-logo">
-      <img src="https://via.placeholder.com/150x150.png?text=WG" alt="Word Game Logo">
+      <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNTAiIGhlaWdodD0iMTUwIiB2aWV3Qm94PSIwIDAgMTUwIDE1MCI+PHJlY3Qgd2lkdGg9IjE1MCIgaGVpZ2h0PSIxNTAiIGZpbGw9IiMzNDk4ZGIiLz48dGV4dCB4PSI3NSIgeT0iODUiIGZvbnQtc2l6ZT0iNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPldHPC90ZXh0Pjwvc3ZnPg==" alt="Word Game Logo">
     </div>
     
     <div class="auth-header">
@@ -33,14 +33,14 @@
             <i class="fas fa-envelope"></i>
             <span>Email</span>
           </label>
-          <input type="email" id="login-email" name="email" required>
+          <input type="email" id="login-email" name="email" required autocomplete="username">
         </div>
         <div class="form-group">
           <label for="login-password">
             <i class="fas fa-lock"></i>
             <span>Password</span>
           </label>
-          <input type="password" id="login-password" name="password" required>
+          <input type="password" id="login-password" name="password" required autocomplete="current-password">
         </div>
         <div class="form-options">
           <div class="checkbox-group">
@@ -64,28 +64,28 @@
             <i class="fas fa-user"></i>
             <span>Username</span>
           </label>
-          <input type="text" id="register-username" name="username" required>
+          <input type="text" id="register-username" name="username" required autocomplete="username">
         </div>
         <div class="form-group">
           <label for="register-email">
             <i class="fas fa-envelope"></i>
             <span>Email</span>
           </label>
-          <input type="email" id="register-email" name="email" required>
+          <input type="email" id="register-email" name="email" required autocomplete="email">
         </div>
         <div class="form-group">
           <label for="register-password">
             <i class="fas fa-lock"></i>
             <span>Password</span>
           </label>
-          <input type="password" id="register-password" name="password" required>
+          <input type="password" id="register-password" name="password" required autocomplete="new-password">
         </div>
         <div class="form-group">
           <label for="register-confirm-password">
             <i class="fas fa-lock"></i>
             <span>Confirm Password</span>
           </label>
-          <input type="password" id="register-confirm-password" name="confirmPassword" required>
+          <input type="password" id="register-confirm-password" name="confirmPassword" required autocomplete="new-password">
         </div>
         <div class="form-group">
           <button type="submit" class="btn primary-btn">
@@ -118,7 +118,7 @@
               <i class="fas fa-envelope"></i>
               <span>Email</span>
             </label>
-            <input type="email" id="reset-email" name="email" required>
+            <input type="email" id="reset-email" name="email" required autocomplete="email">
           </div>
           <div class="form-group">
             <button type="submit" class="btn primary-btn">
@@ -137,6 +137,10 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+  <!-- Load Socket.IO client library first -->
+  <script src="/socket.io/socket.io.js"></script>
+  <!-- Then load your custom scripts -->
+  <script src="js/socket.js"></script>
   <script src="js/auth.js"></script>
 </body>
 </html> 

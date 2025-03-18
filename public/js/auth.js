@@ -18,15 +18,12 @@ const resetMessage = document.getElementById('reset-message');
 const loadingOverlay = document.getElementById('loading-overlay');
 const onlineCountElement = document.getElementById('online-count');
 
-// Socket.IO connection
-let socket;
-
 // Initialize authentication
 function initAuth() {
     setupEventListeners();
     initParticles();
     checkExistingToken();
-    connectSocket();
+    setupSocketListeners();
 }
 
 // Set up event listeners
@@ -98,31 +95,15 @@ function initParticles() {
                 value: '#ffffff'
             },
             shape: {
-                type: 'circle',
-                stroke: {
-                    width: 0,
-                    color: '#000000'
-                }
+                type: 'circle'
             },
             opacity: {
                 value: 0.5,
-                random: true,
-                anim: {
-                    enable: true,
-                    speed: 1,
-                    opacity_min: 0.1,
-                    sync: false
-                }
+                random: false
             },
             size: {
                 value: 3,
-                random: true,
-                anim: {
-                    enable: true,
-                    speed: 2,
-                    size_min: 0.1,
-                    sync: false
-                }
+                random: true
             },
             line_linked: {
                 enable: true,
@@ -133,17 +114,12 @@ function initParticles() {
             },
             move: {
                 enable: true,
-                speed: 1,
+                speed: 6,
                 direction: 'none',
-                random: true,
+                random: false,
                 straight: false,
                 out_mode: 'out',
-                bounce: false,
-                attract: {
-                    enable: false,
-                    rotateX: 600,
-                    rotateY: 1200
-                }
+                bounce: false
             }
         },
         interactivity: {
@@ -151,37 +127,28 @@ function initParticles() {
             events: {
                 onhover: {
                     enable: true,
-                    mode: 'grab'
+                    mode: 'repulse'
                 },
                 onclick: {
                     enable: true,
                     mode: 'push'
                 },
                 resize: true
-            },
-            modes: {
-                grab: {
-                    distance: 140,
-                    line_linked: {
-                        opacity: 1
-                    }
-                },
-                push: {
-                    particles_nb: 4
-                }
             }
         },
         retina_detect: true
     });
 }
 
-// Connect to Socket.IO
-function connectSocket() {
-    socket = io();
+// Set up Socket.IO event listeners
+function setupSocketListeners() {
+    const socket = getSocket();
     
     // Listen for online count updates
     socket.on('onlineCount', (count) => {
-        onlineCountElement.textContent = count;
+        if (onlineCountElement) {
+            onlineCountElement.textContent = count;
+        }
     });
 }
 
@@ -264,7 +231,8 @@ function handleLogin(event) {
                 sessionStorage.setItem('token', data.token);
             }
             
-            // Emit user connected event
+            // Emit user connected event using getSocket()
+            const socket = getSocket();
             if (socket) {
                 socket.emit('userConnected', { 
                     username: data.user.username 
@@ -338,7 +306,8 @@ function handleRegister(event) {
             // Store token in session storage (not remembering by default for new registrations)
             sessionStorage.setItem('token', data.token);
             
-            // Emit user connected event
+            // Emit user connected event using getSocket()
+            const socket = getSocket();
             if (socket) {
                 socket.emit('userConnected', { 
                     username: data.user.username 
@@ -441,5 +410,5 @@ function hideLoading() {
     loadingOverlay.style.display = 'none';
 }
 
-// Initialize authentication when the page loads
+// Initialize when the document is ready
 document.addEventListener('DOMContentLoaded', initAuth); 

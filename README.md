@@ -8,6 +8,7 @@ A real-time multiplayer word game built with Node.js, Express, MongoDB, and Sock
 - [Features](#features)
 - [Project Structure](#project-structure)
 - [Setup and Installation](#setup-and-installation)
+- [User Interface](#user-interface)
 - [API Routes](#api-routes)
 - [Socket.IO Events](#socketio-events)
 - [Game Rules](#game-rules)
@@ -44,6 +45,13 @@ Word Game is a real-time multiplayer game where players create words from random
   - Live player status updates
   - Game state synchronization
   - Online player counter
+
+- **User Interface**
+  - Dark-themed futuristic/neon aesthetic
+  - Responsive design for all screen sizes
+  - Interactive menu system
+  - Leaderboards
+  - Settings customization
 
 ## Project Structure
 
@@ -127,6 +135,61 @@ word-game/
 
 5. Open your browser and navigate to `http://localhost:3000`
 
+## User Interface
+
+### Authentication Screen
+- Dark-themed login/register form with particle animation background
+- Toggle between login and registration
+- "Remember me" option
+- Password reset functionality
+
+### Menu Screen
+- Dark-themed with futuristic/neon aesthetic
+- Top navigation bar with username, avatar, and dropdown menu
+- Four main menu options displayed as interactive cards:
+  - Create Lobby: Opens the lobby creation modal
+  - Join Lobby: Scrolls to active lobbies list
+  - Leaderboard: Shows the leaderboard modal
+  - Settings: Opens the settings modal
+- Active lobbies list with refresh button
+- Online player counter
+
+### Lobby Creation Modal
+- Lobby name input field (required)
+- Max players dropdown (2-10 players)
+- Private lobby toggle
+- Password field (shown only for private lobbies)
+- Game mode selection (Standard/Hardcore)
+
+### Leaderboard Screen
+- Tabs for different ranking categories:
+  - Most Wins
+  - Most Words
+  - Best Win Rate
+- Player ranking display with position, avatar, username, and stats
+- Highlighted top 3 players
+
+### Settings Modal
+- Username change option
+- Sound toggle
+- Music toggle
+- Theme selection (Dark/Light/Neon)
+
+### Lobby Waiting Room
+- Chat functionality
+- Player list with status indicators
+- Ready/Unready toggle
+- Lobby information display
+- Start game button (host only)
+
+### Game Screen
+- Current letter display
+- Word input field
+- Game board with created words
+- Player scores
+- Timer countdown
+- Power-ups section
+
 ## API Routes
 
 ### Authentication Routes
@@ -162,23 +225,37 @@ word-game/
 
 ### Lobby Routes
 
-- `GET /api/lobbies` - Get all public lobbies
+- `GET /api/lobby` - Get all public lobbies
   - Headers: `Authorization: Bearer <token>`
   - Response: `{ success, lobbies }`
 
-- `POST /api/lobbies` - Create a new lobby
+- `POST /api/lobby` - Create a new lobby
   - Headers: `Authorization: Bearer <token>`
-  - Request: `{ name, isPrivate, maxPlayers, password }`
+  - Request: `{ name, isPrivate, maxPlayers, password, gameMode }`
   - Response: `{ success, lobby }`
 
-- `GET /api/lobbies/:id` - Get a specific lobby
+- `GET /api/lobby/:id` - Get a specific lobby
   - Headers: `Authorization: Bearer <token>`
   - Response: `{ success, lobby }`
 
-- `POST /api/lobbies/:id/join` - Join a lobby
+- `POST /api/lobby/:id/join` - Join a lobby
   - Headers: `Authorization: Bearer <token>`
   - Request: `{ password }` (if private)
   - Response: `{ success, message }`
+
+### Leaderboard Routes
+
+- `GET /api/leaderboard/wins` - Get leaderboard by wins
+  - Headers: `Authorization: Bearer <token>`
+  - Response: `{ success, leaderboard }`
+
+- `GET /api/leaderboard/words` - Get leaderboard by words created
+  - Headers: `Authorization: Bearer <token>`
+  - Response: `{ success, leaderboard }`
+
+- `GET /api/leaderboard/winrate` - Get leaderboard by win rate
+  - Headers: `Authorization: Bearer <token>`
+  - Response: `{ success, leaderboard }`
 
 ### Game Routes
 
@@ -205,6 +282,7 @@ word-game/
 - `joinLobby` - User joins a lobby
 - `leaveLobby` - User leaves a lobby
 - `lobbyUpdate` - Lobby state changes
+- `lobbiesUpdate` - List of lobbies updates
 - `lobbyChat` - User sends a chat message
 - `playerReady` - Player marks as ready
 - `playerUnready` - Player marks as not ready
@@ -254,6 +332,15 @@ word-game/
 - Improved error handling and debugging
 - Enhanced token validation logic
 
+### v1.5.0 (2024-03-18)
+- Complete UI redesign with dark futuristic/neon aesthetic
+- Added particle animation background
+- Implemented user profile dropdown
+- Added comprehensive leaderboard system
+- Enhanced lobby creation with game mode selection
+- Improved responsive design for all screen sizes
+- Added theme customization in settings
+
 ## Troubleshooting
 
 ### Authentication Issues
@@ -265,15 +352,34 @@ If you experience a redirect loop during login:
 3. Check that your JWT_SECRET is properly set in the .env file
 4. Ensure the server is running on the correct port
 
+#### JWT Authentication Errors
+If you see "JWT malformed" errors in the console:
+1. Check that your token is being correctly stored and retrieved
+2. Verify that all API calls include the proper Authorization header format: `Bearer <token>`
+3. Make sure tokens are being retrieved from both localStorage and sessionStorage
+4. Try logging out and logging back in to get a fresh token
+5. Clear browser cache and cookies if problems persist
+
 #### Server Already Running
 If you see "Error: listen EADDRINUSE: address already in use" when starting the server:
 1. Find the process using the port: `netstat -ano | findstr :<PORT>`
 2. Kill the process: `taskkill /F /PID <PID>`
 3. Restart the server: `npm run dev`
 
+### API Endpoint Issues
+
+#### Error Fetching Lobbies
+If you see "SyntaxError: Unexpected token < in JSON at position 0":
+1. This typically indicates an HTML response instead of JSON
+2. Verify API endpoints are correctly configured
+3. Check for server-side route handling issues
+4. Ensure proper CORS configuration if accessing from a different domain
+
 ### API Endpoint Changes
 Note that some API endpoints have been updated:
 - User profile: `/api/auth/profile` (previously `/api/users/me`)
 - Token validation: `/api/auth/validate`
+- Lobby endpoints: All lobby endpoints use `/api/lobby/` format
+- Leaderboard endpoints: `/api/leaderboard/<category>`
 
-For developers, remember to check the browser console for debug logs when troubleshooting authentication issues.
+For developers, remember to check the browser console for debug logs when troubleshooting issues.

@@ -12,10 +12,11 @@ let socket = null;
  */
 function getSocket() {
     if (!socket) {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
         // Initialize socket connection
         socket = io({
             auth: {
-                token: localStorage.getItem('token')
+                token: token
             },
             reconnection: true,
             reconnectionAttempts: 5,
@@ -41,8 +42,13 @@ function setupSocketEvents() {
         console.error('Connection error:', error.message);
         
         // If the error is due to authentication, redirect to login
-        if (error.message === 'Authentication error') {
+        if (error.message === 'Authentication error' || 
+            error.message === 'invalid token' || 
+            error.message === 'jwt expired' || 
+            error.message.includes('authentication')) {
+            console.log("Authentication error in socket connection, redirecting to login");
             localStorage.removeItem('token');
+            sessionStorage.removeItem('token');
             window.location.href = '/index.html';
         }
     });
