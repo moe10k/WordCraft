@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Word Game - Menu</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+  <div class="menu-container">
+    <header class="menu-header">
+      <h1>Word Game</h1>
+      <div class="user-info">
+        <span>Welcome, <span id="username">Player</span>!</span>
+        <button id="logout-btn" class="btn small-btn">Logout</button>
+      </div>
+    </header>
+
+    <div class="menu-content">
+      <div class="menu-section profile-section">
+        <h2>Your Profile</h2>
+        <div class="profile-stats">
+          <div class="stat-item">
+            <span class="stat-label">Games Played:</span>
+            <span class="stat-value" id="games-played">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Wins:</span>
+            <span class="stat-value" id="wins">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Win Rate:</span>
+            <span class="stat-value" id="win-rate">0%</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Words Created:</span>
+            <span class="stat-value" id="words-created">0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="menu-section lobbies-section">
+        <div class="section-header">
+          <h2>Game Lobbies</h2>
+          <div class="section-actions">
+            <button id="refresh-lobbies-btn" class="btn small-btn">
+              <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <button id="create-lobby-btn" class="btn primary-btn">
+              <i class="fas fa-plus"></i> Create Lobby
+            </button>
+          </div>
+        </div>
+        
+        <div class="lobbies-list" id="lobbies-list">
+          <!-- Lobbies will be populated here -->
+          <div class="loading-spinner"></div>
+        </div>
+      </div>
+
+      <div class="menu-section join-private-section">
+        <h2>Join Private Lobby</h2>
+        <div class="join-private-form">
+          <input type="text" id="private-lobby-code" placeholder="Enter lobby code">
+          <button id="join-private-btn" class="btn primary-btn">Join</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Lobby Modal -->
+    <div id="create-lobby-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Create New Lobby</h2>
+          <span class="close-modal">&times;</span>
+        </div>
+        <form id="create-lobby-form">
+          <div class="form-group">
+            <label for="lobby-name">Lobby Name</label>
+            <input type="text" id="lobby-name" name="name" required>
+          </div>
+          <div class="form-group">
+            <label for="max-players">Max Players (2-8)</label>
+            <input type="number" id="max-players" name="maxPlayers" min="2" max="8" value="4" required>
+          </div>
+          <div class="form-group checkbox-group">
+            <input type="checkbox" id="private-lobby" name="isPrivate">
+            <label for="private-lobby">Private Lobby</label>
+          </div>
+          <div class="form-group" id="password-group" style="display: none;">
+            <label for="lobby-password">Password</label>
+            <input type="password" id="lobby-password" name="password">
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn cancel-btn" id="cancel-create-lobby">Cancel</button>
+            <button type="submit" class="btn primary-btn">Create</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Join Private Lobby Modal -->
+    <div id="join-private-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Join Private Lobby</h2>
+          <span class="close-modal">&times;</span>
+        </div>
+        <form id="join-private-form">
+          <div class="form-group">
+            <label for="private-lobby-password">Password</label>
+            <input type="password" id="private-lobby-password" name="password" required>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn cancel-btn" id="cancel-join-private">Cancel</button>
+            <button type="submit" class="btn primary-btn">Join</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="menu-message" class="message"></div>
+  </div>
+
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loading-spinner"></div>
+    <p>Loading...</p>
+  </div>
+
+  <!-- Load Socket.IO client library first -->
+  <script src="/socket.io/socket.io.js"></script>
+  <!-- Then load your custom scripts -->
+  <script src="js/socket.js"></script>
+  <script src="js/menu.js"></script>
+</body>
+</html> 

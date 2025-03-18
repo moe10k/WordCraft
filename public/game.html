@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Word Game - Playing</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+  <div class="game-container">
+    <header class="game-header">
+      <div class="game-info">
+        <h1>Word Game</h1>
+        <div id="timer" class="timer">
+          <i class="fas fa-clock"></i> <span id="time-left">30</span>s
+        </div>
+      </div>
+      <div class="game-actions">
+        <button id="leave-game-btn" class="btn danger-btn">
+          <i class="fas fa-sign-out-alt"></i> Leave Game
+        </button>
+      </div>
+    </header>
+
+    <div class="game-content">
+      <div class="players-section">
+        <h2>Players</h2>
+        <div id="players-container" class="players-container">
+          <!-- Players will be populated here -->
+        </div>
+      </div>
+
+      <div class="game-board">
+        <div class="current-letter-container">
+          <h2>Current Letter</h2>
+          <div id="current-letter" class="current-letter">A</div>
+        </div>
+        
+        <div class="word-input-container">
+          <input type="text" id="word-input" placeholder="Type a word..." maxlength="20" autocomplete="off">
+          <button id="submit-word-btn" class="btn primary-btn">Submit</button>
+        </div>
+        
+        <div id="game-message" class="game-message"></div>
+        
+        <div class="power-ups-container">
+          <h3>Power-ups</h3>
+          <div id="power-ups" class="power-ups">
+            <!-- Power-ups will be populated here -->
+            <button class="power-up-btn" data-type="time" title="Add 5 seconds">
+              <i class="fas fa-clock"></i>
+            </button>
+            <button class="power-up-btn" data-type="skip" title="Skip current letter">
+              <i class="fas fa-forward"></i>
+            </button>
+            <button class="power-up-btn" data-type="hint" title="Get a hint">
+              <i class="fas fa-lightbulb"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-section">
+        <h2>Chat</h2>
+        <div id="chat-container" class="chat-container">
+          <div id="chat-messages" class="chat-messages">
+            <!-- Chat messages will be populated here -->
+            <div class="system-message">Game started! Good luck!</div>
+          </div>
+          <div class="chat-input-container">
+            <input type="text" id="chat-input" placeholder="Type a message..." maxlength="100">
+            <button id="chat-send-btn" class="btn primary-btn">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="game-over-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Game Over</h2>
+        </div>
+        <div class="modal-body">
+          <div id="game-over-message" class="game-over-message"></div>
+          <div class="game-stats">
+            <h3>Game Stats</h3>
+            <div id="game-stats-container" class="game-stats-container">
+              <!-- Game stats will be populated here -->
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="return-to-lobby-btn" class="btn primary-btn">Return to Lobby</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loading-spinner"></div>
+    <p>Loading...</p>
+  </div>
+
+  <script src="js/socket.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html> 
