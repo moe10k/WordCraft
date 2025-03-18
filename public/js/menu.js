@@ -830,54 +830,55 @@ function applyTheme(theme) {
 
 // Join lobby
 function joinLobby(lobbyId, password = null) {
-    console.log(`Joining lobby ${lobbyId}`, password ? 'with password' : '');
-    
-    if (!lobbyId) {
-        showMessage('Invalid lobby ID', 'error');
-        return;
-    }
-    
+    // Show loading overlay
     showLoading();
     
+    // Get the token
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (!token) {
-        console.error("No token found when joining lobby");
-        showMessage('Authentication error. Please log in again.', 'error');
-        window.location.href = '/index.html';
+        hideLoading();
+        showMessage('Authentication token not found. Please log in again.', 'error');
+        setTimeout(() => {
+            window.location.href = '/index.html';
+        }, 3000);
         return;
     }
     
-    const requestBody = password ? JSON.stringify({ password }) : '{}';
+    // If this is a private lobby requiring a password
+    const url = password ? 
+        `/api/lobby/${lobbyId}/join` : 
+        `/api/lobby/${lobbyId}/join`;
     
-    fetch(`/api/lobby/${lobbyId}/join`, {
+    // Join the lobby via API
+    fetch(url, {
         method: 'POST',
         headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
         },
-        body: requestBody
+        body: JSON.stringify({ password })
     })
-    .then(response => {
-        if (!response.ok) {
-            if (response.status === 401) {
-                throw new Error('Incorrect password');
-            } else if (response.status === 404) {
-                throw new Error('Lobby not found');
-            } else {
-                throw new Error('Failed to join lobby');
-            }
-        }
-        return response.json();
-    })
+    .then(response => response.json())
     .then(data => {
-        console.log('Joined lobby:', data);
-        // Redirect to the lobby
-        window.location.href = `/lobby.html?id=${lobbyId}`;
+        hideLoading();
+        
+        if (data.success) {
+            // Store the current lobby ID in local storage for persistence
+            localStorage.setItem('currentLobby', lobbyId);
+            
+            // Apply the same theme to the lobby page
+            const currentTheme = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
+            localStorage.setItem('theme', currentTheme);
+            
+            // Navigate to the lobby page
+            window.location.href = `/lobby.html?id=${lobbyId}`;
+        } else {
+            throw new Error(data.message || 'Failed to join lobby');
+        }
     })
     .catch(error => {
-        console.error('Error joining lobby:', error);
-        showMessage(error.message || 'Failed to join lobby. Please try again.', 'error');
         hideLoading();
+        showMessage(error.message, 'error');
     });
 }
 

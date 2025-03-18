@@ -52,6 +52,7 @@ Word Game is a real-time multiplayer game where players create words from random
   - Interactive menu system
   - Leaderboards
   - Settings customization
+  - Seamless transitions between menu and lobby
 
 ## Project Structure
 
@@ -161,6 +162,16 @@ word-game/
 - Password field (shown only for private lobbies)
 - Game mode selection (Standard/Hardcore)
 
+### Lobby Screen
+- Consistent dark-themed futuristic/neon aesthetic with the menu
+- Same particle background animation as the menu
+- Players list with status indicators (ready/not ready)
+- Real-time chat functionality
+- Ready/Unready toggle button
+- Start game button (host only)
+- Lobby settings (host only)
+- Online player counter
+
 ### Leaderboard Screen
 - Tabs for different ranking categories:
   - Most Wins
@@ -174,13 +185,6 @@ word-game/
 - Sound toggle
 - Music toggle
 - Theme selection (Dark/Light/Neon)
-
-### Lobby Waiting Room
-- Chat functionality
-- Player list with status indicators
-- Ready/Unready toggle
-- Lobby information display
-- Start game button (host only)
 
 ### Game Screen
 - Current letter display
@@ -287,6 +291,7 @@ word-game/
 - `playerReady` - Player marks as ready
 - `playerUnready` - Player marks as not ready
 - `startGame` - Host starts the game
+- `lobbyData` - Server sends lobby data
 
 ### Game Events
 
@@ -340,6 +345,15 @@ word-game/
 - Enhanced lobby creation with game mode selection
 - Improved responsive design for all screen sizes
 - Added theme customization in settings
+
+### v1.6.0 (2024-03-20)
+- Implemented seamless transition between menu and lobby
+- Applied consistent dark-themed futuristic/neon aesthetic across all screens
+- Added real-time online player counter to lobby screen
+- Improved lobby and player status indicators
+- Enhanced chat system with styled messages
+- Updated socket handling for better reliability
+- Added better error handling for authentication and connection issues
 
 ## Troubleshooting
 
