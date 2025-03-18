@@ -7,50 +7,67 @@
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
-<body>
+<body class="dark-theme">
+  <div id="particles-background"></div>
+  
   <div class="menu-container">
     <header class="menu-header">
-      <h1>Word Game</h1>
-      <div class="user-info">
-        <span>Welcome, <span id="username">Player</span>!</span>
-        <button id="logout-btn" class="btn small-btn">Logout</button>
+      <div class="nav-left">
+        <h1 class="logo">Word Game</h1>
+      </div>
+      <div class="nav-right">
+        <div class="user-profile" id="user-profile">
+          <div class="avatar">
+            <i class="fas fa-user-circle"></i>
+          </div>
+          <span id="username">Player</span>
+          <i class="fas fa-chevron-down"></i>
+        </div>
+        <button id="logout-btn" class="btn icon-btn"><i class="fas fa-sign-out-alt"></i></button>
       </div>
     </header>
 
     <div class="menu-content">
-      <div class="menu-section profile-section">
-        <h2>Your Profile</h2>
-        <div class="profile-stats">
-          <div class="stat-item">
-            <span class="stat-label">Games Played:</span>
-            <span class="stat-value" id="games-played">0</span>
+      <div class="menu-main-options">
+        <div class="menu-card" id="create-lobby-card">
+          <div class="menu-card-icon">
+            <i class="fas fa-plus-circle"></i>
           </div>
-          <div class="stat-item">
-            <span class="stat-label">Wins:</span>
-            <span class="stat-value" id="wins">0</span>
+          <h2>Create a Lobby</h2>
+          <p>Start a new game with friends</p>
+        </div>
+        
+        <div class="menu-card" id="join-lobby-card">
+          <div class="menu-card-icon">
+            <i class="fas fa-door-open"></i>
           </div>
-          <div class="stat-item">
-            <span class="stat-label">Win Rate:</span>
-            <span class="stat-value" id="win-rate">0%</span>
+          <h2>Join a Lobby</h2>
+          <p>Find an existing game to join</p>
+        </div>
+        
+        <div class="menu-card" id="leaderboard-card">
+          <div class="menu-card-icon">
+            <i class="fas fa-trophy"></i>
           </div>
-          <div class="stat-item">
-            <span class="stat-label">Words Created:</span>
-            <span class="stat-value" id="words-created">0</span>
+          <h2>Leaderboard</h2>
+          <p>See top players and rankings</p>
+        </div>
+        
+        <div class="menu-card" id="settings-card">
+          <div class="menu-card-icon">
+            <i class="fas fa-cog"></i>
           </div>
+          <h2>Settings</h2>
+          <p>Customize your game experience</p>
         </div>
       </div>
 
-      <div class="menu-section lobbies-section">
+      <div class="active-lobbies-section">
         <div class="section-header">
-          <h2>Game Lobbies</h2>
-          <div class="section-actions">
-            <button id="refresh-lobbies-btn" class="btn small-btn">
-              <i class="fas fa-sync-alt"></i> Refresh
-            </button>
-            <button id="create-lobby-btn" class="btn primary-btn">
-              <i class="fas fa-plus"></i> Create Lobby
-            </button>
-          </div>
+          <h2><i class="fas fa-gamepad"></i> Active Lobbies</h2>
+          <button id="refresh-lobbies-btn" class="btn neon-btn">
+            <i class="fas fa-sync-alt"></i> Refresh
+          </button>
         </div>
         
         <div class="lobbies-list" id="lobbies-list">
@@ -59,42 +76,65 @@
         </div>
       </div>
 
-      <div class="menu-section join-private-section">
-        <h2>Join Private Lobby</h2>
-        <div class="join-private-form">
-          <input type="text" id="private-lobby-code" placeholder="Enter lobby code">
-          <button id="join-private-btn" class="btn primary-btn">Join</button>
-        </div>
+      <div class="online-players-counter">
+        <i class="fas fa-users"></i> <span id="online-count">0</span> Players Online
+      </div>
+    </div>
+
+    <!-- User Profile Dropdown Menu -->
+    <div id="profile-dropdown" class="profile-dropdown">
+      <div class="dropdown-item" id="view-profile">
+        <i class="fas fa-user"></i> View Profile
+      </div>
+      <div class="dropdown-item" id="edit-profile">
+        <i class="fas fa-edit"></i> Edit Profile
+      </div>
+      <div class="dropdown-divider"></div>
+      <div class="dropdown-item" id="logout-dropdown">
+        <i class="fas fa-sign-out-alt"></i> Logout
       </div>
     </div>
 
     <!-- Create Lobby Modal -->
     <div id="create-lobby-modal" class="modal">
-      <div class="modal-content">
+      <div class="modal-content neon-modal">
         <div class="modal-header">
-          <h2>Create New Lobby</h2>
+          <h2><i class="fas fa-plus-circle"></i> Create New Lobby</h2>
           <span class="close-modal">&times;</span>
         </div>
         <form id="create-lobby-form">
           <div class="form-group">
-            <label for="lobby-name">Lobby Name</label>
-            <input type="text" id="lobby-name" name="name" required>
+            <label for="lobby-name"><i class="fas fa-keyboard"></i> Lobby Name</label>
+            <input type="text" id="lobby-name" name="name" placeholder="Enter a unique lobby name" required>
           </div>
           <div class="form-group">
-            <label for="max-players">Max Players (2-8)</label>
-            <input type="number" id="max-players" name="maxPlayers" min="2" max="8" value="4" required>
+            <label for="max-players"><i class="fas fa-users"></i> Max Players</label>
+            <select id="max-players" name="maxPlayers">
+              <option value="2">2 Players</option>
+              <option value="4" selected>4 Players</option>
+              <option value="6">6 Players</option>
+              <option value="8">8 Players</option>
+              <option value="10">10 Players</option>
+            </select>
           </div>
           <div class="form-group checkbox-group">
             <input type="checkbox" id="private-lobby" name="isPrivate">
-            <label for="private-lobby">Private Lobby</label>
+            <label for="private-lobby"><i class="fas fa-lock"></i> Private Lobby</label>
           </div>
           <div class="form-group" id="password-group" style="display: none;">
-            <label for="lobby-password">Password</label>
-            <input type="password" id="lobby-password" name="password">
+            <label for="lobby-password"><i class="fas fa-key"></i> Password</label>
+            <input type="password" id="lobby-password" name="password" placeholder="Enter lobby password" autocomplete="new-password">
+          </div>
+          <div class="form-group">
+            <label for="game-mode"><i class="fas fa-gamepad"></i> Game Mode</label>
+            <select id="game-mode" name="gameMode">
+              <option value="standard" selected>Standard</option>
+              <option value="hardcore">Hardcore</option>
+            </select>
           </div>
           <div class="form-actions">
             <button type="button" class="btn cancel-btn" id="cancel-create-lobby">Cancel</button>
-            <button type="submit" class="btn primary-btn">Create</button>
+            <button type="submit" class="btn neon-btn">Create Lobby</button>
           </div>
         </form>
       </div>
@@ -102,21 +142,88 @@
 
     <!-- Join Private Lobby Modal -->
     <div id="join-private-modal" class="modal">
-      <div class="modal-content">
+      <div class="modal-content neon-modal">
         <div class="modal-header">
-          <h2>Join Private Lobby</h2>
+          <h2><i class="fas fa-lock"></i> Join Private Lobby</h2>
           <span class="close-modal">&times;</span>
         </div>
         <form id="join-private-form">
           <div class="form-group">
-            <label for="private-lobby-password">Password</label>
-            <input type="password" id="private-lobby-password" name="password" required>
+            <label for="private-lobby-id"><i class="fas fa-hashtag"></i> Lobby ID</label>
+            <input type="text" id="private-lobby-id" name="lobbyId" placeholder="Enter lobby ID" required>
+          </div>
+          <div class="form-group">
+            <label for="private-lobby-password"><i class="fas fa-key"></i> Password</label>
+            <input type="password" id="private-lobby-password" name="password" placeholder="Enter lobby password" required autocomplete="new-password">
           </div>
           <div class="form-actions">
             <button type="button" class="btn cancel-btn" id="cancel-join-private">Cancel</button>
-            <button type="submit" class="btn primary-btn">Join</button>
+            <button type="submit" class="btn neon-btn">Join Lobby</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+      <div class="modal-content neon-modal">
+        <div class="modal-header">
+          <h2><i class="fas fa-cog"></i> Settings</h2>
+          <span class="close-modal">&times;</span>
+        </div>
+        <form id="settings-form">
+          <div class="form-group">
+            <label for="username-setting"><i class="fas fa-user"></i> Username</label>
+            <input type="text" id="username-setting" name="username" placeholder="Change your username">
+          </div>
+          <div class="form-group checkbox-group">
+            <input type="checkbox" id="sound-enabled" name="soundEnabled" checked>
+            <label for="sound-enabled"><i class="fas fa-volume-up"></i> Enable Sound</label>
+          </div>
+          <div class="form-group checkbox-group">
+            <input type="checkbox" id="music-enabled" name="musicEnabled" checked>
+            <label for="music-enabled"><i class="fas fa-music"></i> Enable Music</label>
+          </div>
+          <div class="form-group">
+            <label for="theme-select"><i class="fas fa-paint-brush"></i> Theme</label>
+            <select id="theme-select" name="theme">
+              <option value="dark">Dark (Default)</option>
+              <option value="light">Light</option>
+              <option value="neon">Neon</option>
+            </select>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn cancel-btn" id="cancel-settings">Cancel</button>
+            <button type="submit" class="btn neon-btn">Save Settings</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Leaderboard Modal -->
+    <div id="leaderboard-modal" class="modal">
+      <div class="modal-content neon-modal">
+        <div class="modal-header">
+          <h2><i class="fas fa-trophy"></i> Leaderboard</h2>
+          <span class="close-modal">&times;</span>
+        </div>
+        <div class="leaderboard-tabs">
+          <button class="tab-btn active" data-tab="wins">Most Wins</button>
+          <button class="tab-btn" data-tab="words">Most Words</button>
+          <button class="tab-btn" data-tab="winrate">Best Win Rate</button>
+        </div>
+        <div class="leaderboard-content">
+          <div id="leaderboard-wins" class="leaderboard-tab active">
+            <!-- Wins leaderboard will be populated here -->
+            <div class="loading-spinner"></div>
+          </div>
+          <div id="leaderboard-words" class="leaderboard-tab">
+            <!-- Words leaderboard will be populated here -->
+          </div>
+          <div id="leaderboard-winrate" class="leaderboard-tab">
+            <!-- Win rate leaderboard will be populated here -->
+          </div>
+        </div>
       </div>
     </div>
 
@@ -133,5 +240,6 @@
   <!-- Then load your custom scripts -->
   <script src="js/socket.js"></script>
   <script src="js/menu.js"></script>
+  <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
 </body>
 </html> 
