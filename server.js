@@ -28,14 +28,10 @@ app.get('/api/firebase-config', (req, res) => {
 });
 
 // Global Variables
-let currentLetters = generateRandomLetters();
-let scores = {};
+// Note: scores, lives, currentPlayerTurn, and gameInProgress are now managed per-lobby
+// Keeping some for backward compatibility but they're not actively used in the lobby system
 let userMap = {};
-let lives = {};
-let totalPlayers = 0;
-let readyPlayers = 0;
-let currentPlayerTurn = null;
-let gameInProgress = false;
+let totalPlayers = 0; // Kept for tracking total connected players
 let playerTimer = {};
 
 // Add authentication tracking
@@ -113,6 +109,15 @@ function joinLobby(socket, lobbyId) {
 function leaveLobby(socket) {
     const lobbyId = playerLobbies[socket.id];
     if (lobbyId && lobbies[lobbyId]) {
+        // Clear timer for this player
+        clearPlayerTimer(socket.id);
+        
+        // If this player was the current turn, move to next player
+        const lobby = lobbies[lobbyId];
+        if (lobby.inProgress && lobby.gameState.currentPlayerTurn === socket.id) {
+            checkAndProceedToNextTurn(lobbyId);
+        }
+        
         delete lobbies[lobbyId].players[socket.id];
         delete playerLobbies[socket.id];
         
@@ -175,24 +180,18 @@ function updateAllPlayers() { // Updates all connected players with the current 
         } else {
             // If not in a lobby, only show this player
             const username = userMap[socketId];
-            const soloPlayerList = [{
-                name: username,
-                ready: false
-            }];
-            
-            socket.emit('playerListUpdate', soloPlayerList);
+            if (username) {
+                const soloPlayerList = [{
+                    name: username,
+                    ready: false
+                }];
+                
+                socket.emit('playerListUpdate', soloPlayerList);
+            }
         }
     });
     
-    // Only send game data if game is in progress
-    if (gameInProgress) {
-        io.emit('gameUpdate', {
-            letters: currentLetters,
-            scores: scores,
-            lives: lives,
-            gameStarted: gameInProgress
-        });
-    }
+    // Game data is now handled per-lobby, so we don't need global game state broadcasting
 }
 
 function handleError(socket, error, context = '') { // Logs an error to the console and emits an error message to the client
@@ -283,10 +282,17 @@ async function handleGuessValidation(socket, word) {
 }
 
 function updatePlayerStatus() { // Updates all connected players with the current player status (ready or not)
-    const playerStatus = Object.values(userMap).map(({ name, ready }) => ({
-        name,
-        ready
-    }));
+    // Note: This function is currently not used in the lobby system
+    // The lobby system uses updateLobbyPlayers instead
+    // Keeping this for backward compatibility but it may not work correctly with current userMap structure
+    const playerStatus = Object.entries(userMap).map(([socketId, username]) => {
+        const lobbyId = playerLobbies[socketId];
+        const ready = lobbyId && lobbies[lobbyId] ? lobbies[lobbyId].players[socketId]?.ready || false : false;
+        return {
+            name: username,
+            ready: ready
+        };
+    });
     io.emit('playerStatusUpdate', playerStatus);
 }
 
@@ -368,6 +374,10 @@ function emitLobbyCurrentTurn(lobbyId) {
     log(`Current player's turn in lobby ${lobbyId}: ${currentUsername}`, 'emitLobbyCurrentTurn');
 }
 
+// DEPRECATED: This function is no longer used in the lobby system
+// Each lobby manages its own state via resetLobby()
+// Keeping for reference but not called anywhere
+/*
 function resetPlayerState() { // Resets the game state for all players and notifies them to reset their UI
     try {
         log(`Resetting game state for all players.`,'resetPlayerState');
@@ -394,6 +404,7 @@ function resetPlayerState() { // Resets the game state for all players and notif
         console.error('Error resetting player state:', error);
     }
 }
+*/
 
 function checkAndProceedToNextTurn(lobbyId) {
     const lobby = lobbies[lobbyId];
@@ -413,6 +424,9 @@ function checkAndProceedToNextTurn(lobbyId) {
         if (playersWithLives.length === 1) {
             const winnerName = lobby.players[playersWithLives[0]].name;
             io.to(lobbyId).emit('gameWin', winnerName);
+        } else {
+            // Edge case: no players with lives (shouldn't happen, but safety check)
+            log('No players with lives remaining in lobby ' + lobbyId, 'checkAndProceedToNextTurn');
         }
         resetLobby(lobbyId);
         return;
@@ -428,6 +442,11 @@ function checkAndProceedToNextTurn(lobbyId) {
     startPlayerTimer(lobby.gameState.currentPlayerTurn, lobbyId);
 }
 
+// NOTE: This function is deprecated and not used in the lobby system.
+// The lobby system uses checkAndProceedToNextTurn instead.
+// Keeping this commented out for reference, but it references old global variables
+// that don't exist in the lobby-based architecture.
+/*
 function moveToNextPlayerTurn(playerIds) {
     try {
         // Find the index of the current player in the active players array
@@ -447,7 +466,7 @@ function moveToNextPlayerTurn(playerIds) {
             const nextPlayerId = playerIds[currentIndex];
             
             // Verify player exists and has lives
-            if (userMap[nextPlayerId] && lives[userMap[nextPlayerId].name] > 0) {
+            if (userMap[nextPlayerId] && lives[userMap[nextPlayerId]] > 0) {
                 currentPlayerTurn = nextPlayerId;
                 nextPlayerFound = true;
             }
@@ -468,7 +487,12 @@ function moveToNextPlayerTurn(playerIds) {
         handleError(null, error, 'moveToNextPlayerTurn');
     }
 }
+*/
 
+// DEPRECATED: This function is no longer used in the lobby system
+// The lobby system uses canPlayerGuess() instead which checks lobby-specific state
+// Keeping for reference but not called anywhere
+/*
 function isPlayersTurn(socket) { // Checks if it is the player's turn to guess
     if (!gameInProgress) {
         socket.emit('actionBlocked', 'The game is not in progress.');
@@ -480,6 +504,7 @@ function isPlayersTurn(socket) { // Checks if it is the player's turn to guess
     }
     return true;
 }
+*/
 
 function hasPlayerLives(socket) { // Checks if the player has any lives remaining
     // Get username from userMap
@@ -677,41 +702,84 @@ function startPlayerTimer(socketId, lobbyId) {
     const lobby = lobbies[lobbyId];
     if (!lobby) return;
 
-    clearInterval(playerTimer[socketId]);
+    // Clear any existing timer and delete reference
+    if (playerTimer[socketId]) {
+        clearInterval(playerTimer[socketId]);
+        delete playerTimer[socketId];
+    }
+    
     let remainingTime = 10;
 
     playerTimer[socketId] = setInterval(() => {
-        if (remainingTime > 0) {
-            remainingTime--;
-            io.to(lobbyId).emit('timerUpdate', remainingTime);
-        } else {
-            clearInterval(playerTimer[socketId]);
-            const username = lobby.players[socketId]?.name;
-            if (username) {
-                lobby.gameState.lives[username]--;
-                
-                io.to(lobbyId).emit('gameUpdate', {
-                    letters: lobby.gameState.currentLetters,
-                    scores: lobby.gameState.scores,
-                    lives: lobby.gameState.lives,
-                    gameStarted: true
-                });
-
-                if (lobby.gameState.lives[username] <= 0) {
-                    io.to(socketId).emit('gameOver');
-                }
+        try {
+            // Check if lobby and player still exist before proceeding
+            const currentLobby = lobbies[lobbyId];
+            if (!currentLobby || !currentLobby.players[socketId]) {
+                // Player or lobby no longer exists, clean up timer
+                clearInterval(playerTimer[socketId]);
+                delete playerTimer[socketId];
+                return;
             }
             
-            checkAndProceedToNextTurn(lobbyId);
-            io.to(lobbyId).emit('timerUpdate', null);
+            if (remainingTime > 0) {
+                remainingTime--;
+                io.to(lobbyId).emit('timerUpdate', remainingTime);
+            } else {
+                clearInterval(playerTimer[socketId]);
+                delete playerTimer[socketId];
+                
+                // Double-check lobby and player still exist before modifying game state
+                const finalLobby = lobbies[lobbyId];
+                if (!finalLobby || !finalLobby.players[socketId]) {
+                    return;
+                }
+                
+                const username = finalLobby.players[socketId]?.name;
+                if (username && finalLobby.gameState.lives[username] !== undefined) {
+                    finalLobby.gameState.lives[username]--;
+                    
+                    io.to(lobbyId).emit('gameUpdate', {
+                        letters: finalLobby.gameState.currentLetters,
+                        scores: finalLobby.gameState.scores,
+                        lives: finalLobby.gameState.lives,
+                        gameStarted: true
+                    });
+
+                    if (finalLobby.gameState.lives[username] <= 0) {
+                        io.to(socketId).emit('gameOver');
+                    }
+                }
+                
+                // Only proceed to next turn if lobby still exists
+                if (lobbies[lobbyId]) {
+                    checkAndProceedToNextTurn(lobbyId);
+                }
+                io.to(lobbyId).emit('timerUpdate', null);
+            }
+        } catch (error) {
+            // Handle any errors in timer callback
+            log(`Error in player timer for ${socketId}: ${error.message}`, 'startPlayerTimer');
+            clearInterval(playerTimer[socketId]);
+            delete playerTimer[socketId];
         }
     }, 1000);
 }
 
 function clearPlayerTimer(socketId) { // Clears the timer for a player's turn
-    clearInterval(playerTimer[socketId]);
-    io.emit('timerUpdate', null);
-    io.emit('typingCleared');
+    if (playerTimer[socketId]) {
+        clearInterval(playerTimer[socketId]);
+        delete playerTimer[socketId]; // Delete reference to prevent memory leak
+    }
+    // Only emit to the specific lobby if the player is in one
+    const lobbyId = playerLobbies[socketId];
+    if (lobbyId && lobbies[lobbyId]) {
+        io.to(lobbyId).emit('timerUpdate', null);
+        io.to(lobbyId).emit('typingCleared');
+    } else {
+        // Fallback to global emit if not in a lobby (shouldn't happen in current system)
+        io.emit('timerUpdate', null);
+        io.emit('typingCleared');
+    }
 }
 
 function handleFreeSkip(socket) {
@@ -752,7 +820,10 @@ function resetLobby(lobbyId) {
 
     // Clear all timers for the lobby
     Object.keys(lobby.players).forEach(playerId => {
-        clearInterval(playerTimer[playerId]);
+        if (playerTimer[playerId]) {
+            clearInterval(playerTimer[playerId]);
+            delete playerTimer[playerId]; // Clean up timer reference
+        }
     });
 
     // Reset ready status
@@ -775,21 +846,32 @@ function checkForStaleSessions(username) {
         
         // Check if these sockets are still connected
         existingSockets.forEach(socketId => {
+            if (!socketId) return; // Null check
+            
             const socket = io.sockets.sockets.get(socketId);
             if (!socket || !socket.connected) {
                 log(`Cleaning up stale session: ${socketId}`, 'checkForStaleSessions');
                 
                 // Clean up all references to this socket
-                delete userMap[socketId];
-                delete scores[socketId];
-                delete lives[socketId];
+                if (userMap[socketId]) {
+                    delete userMap[socketId];
+                }
+                // Note: scores and lives are now managed per-lobby, not globally
                 if (authenticatedUsers[socketId]) {
                     delete authenticatedUsers[socketId];
+                }
+                
+                // Clean up timer if exists
+                if (playerTimer[socketId]) {
+                    clearPlayerTimer(socketId);
                 }
                 
                 // Clean up from lobbies
                 const lobbyId = playerLobbies[socketId];
                 if (lobbyId && lobbies[lobbyId]) {
+                    // Clear timer before removing from lobby
+                    clearPlayerTimer(socketId);
+                    
                     delete lobbies[lobbyId].players[socketId];
                     delete playerLobbies[socketId];
                     
@@ -817,16 +899,14 @@ io.on('connection', (socket) => {
     });
     
     socket.on('userSignedOut', () => {
-        // Remove the player from any lobby they're in
-        leaveLobby(socket);
+        // Handle player disconnect (includes lobby cleanup)
         handlePlayerDisconnect(socket);
         
         // Clean up global player data
         if (userMap[socket.id]) {
             log(`Cleaning up signed out player: ${userMap[socket.id]} (${socket.id})`, 'userSignedOut');
             delete userMap[socket.id];
-            delete scores[socket.id];
-            delete lives[socket.id];
+            // Note: scores and lives are now managed per-lobby, not globally
             if (authenticatedUsers[socket.id]) {
                 delete authenticatedUsers[socket.id];
             }
@@ -872,8 +952,7 @@ io.on('connection', (socket) => {
         
         userMap[socket.id] = username;
         log(`Username set: ${username} (${socket.id}) - Authenticated: ${isAuthenticated}`);
-        scores[socket.id] = 0;
-        lives[socket.id] = 3;
+        // Note: scores and lives are now initialized per-lobby when game starts, not globally
         totalPlayers++;
         
         // If the user is authenticated, store additional info
@@ -890,6 +969,14 @@ io.on('connection', (socket) => {
     socket.on('guess', guessHandler(socket));
     socket.on('ready', (isReady) => setPlayerReady(socket, isReady));
     socket.on('typing', typingHandler(socket));
+    socket.on('clearTyping', () => {
+        const lobbyId = playerLobbies[socket.id];
+        if (lobbyId && lobbies[lobbyId]) {
+            io.to(lobbyId).emit('typingCleared');
+        } else {
+            socket.broadcast.emit('typingCleared');
+        }
+    });
     socket.on('freeSkip', () => handleFreeSkip(socket));
     
     // Lobby System Events
@@ -925,17 +1012,25 @@ io.on('connection', (socket) => {
         }
     });
     
+    socket.on('resetGameRequest', () => {
+        const lobbyId = playerLobbies[socket.id];
+        if (lobbyId && lobbies[lobbyId]) {
+            resetLobby(lobbyId);
+            log(`Game reset requested by ${userMap[socket.id] || socket.id} in lobby ${lobbyId}`, 'resetGameRequest');
+        } else {
+            socket.emit('lobbyError', 'You are not in a lobby');
+        }
+    });
+    
     socket.on('disconnect', () => {
-        // Remove the player from any lobby they're in
-        leaveLobby(socket);
+        // Handle player disconnect (includes lobby cleanup)
         handlePlayerDisconnect(socket);
         
         // Clean up global player data
         if (userMap[socket.id]) {
             log(`Cleaning up disconnected player: ${userMap[socket.id]} (${socket.id})`, 'disconnect');
             delete userMap[socket.id];
-            delete scores[socket.id];
-            delete lives[socket.id];
+            // Note: scores and lives are now managed per-lobby, not globally
             if (authenticatedUsers[socket.id]) {
                 delete authenticatedUsers[socket.id];
             }

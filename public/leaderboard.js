@@ -1,13 +1,5 @@
-// Firebase configuration
-const firebaseConfig = {
-    apiKey: "AIzaSyCITzsK8TxUsxML-NV50wzpQPz-wTrlGok",
-    authDomain: "wordguessgame-f5525.firebaseapp.com",
-    projectId: "wordguessgame-f5525",
-    storageBucket: "wordguessgame-f5525.firebasestorage.app",
-    messagingSenderId: "238053476011",
-    appId: "1:238053476011:web:562f2b9c6652841b32d9ee",
-    measurementId: "G-8NCSPTS69J"
-};
+// Firebase configuration - will be loaded from server
+let firebaseConfig = {};
 
 // Initialize Firebase
 let db;
@@ -34,7 +26,9 @@ class Leaderboard {
     }
 
     isUserAuthenticated() {
-        return auth.currentUser !== null;
+        return auth.currentUser !== null && 
+               !auth.currentUser.isAnonymous && 
+               auth.currentUser.email !== null;
     }
 
     getCurrentUser() {
@@ -46,17 +40,34 @@ class Leaderboard {
             // Check if Firebase is initialized
             if (!firebase.apps.length) {
                 console.error('Firebase not initialized');
-                return false;
+                return { updated: false, reason: 'firebase-not-initialized' };
             }
 
             // Get the current user
             const user = auth.currentUser;
             console.log('Current auth state:', user ? 'Authenticated' : 'Not authenticated');
+            
+            // Additional logging to debug authentication state
+            if (user) {
+                console.log('User details:', {
+                    isAnonymous: user.isAnonymous,
+                    hasEmail: !!user.email,
+                    providerData: user.providerData.map(p => p.providerId)
+                });
+            }
+            
+            // Strict check for authenticated users
+            if (!this.isUserAuthenticated()) {
+                console.log('Guest or anonymous user win NOT recorded in leaderboard:', username);
+                return { updated: false, reason: 'guest-user' };
+            }
+            
+            console.log('Authenticated user win WILL BE recorded in leaderboard:', username);
 
             const userDoc = this.scoresRef.doc(username);
             const doc = await userDoc.get();
             
-            console.log('Updating wins for:', username);
+            console.log('Updating wins for authenticated user:', username);
             if (doc.exists) {
                 console.log('Current data:', doc.data());
                 // Use Firestore's increment operation to safely increment wins
@@ -66,7 +77,8 @@ class Leaderboard {
                 const updateData = {
                     wins: increment,
                     lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
-                    uid: user ? user.uid : 'anonymous'  // Track the user's ID
+                    uid: user.uid,
+                    email: user.email // Store email for verification
                 };
                 
                 await userDoc.update(updateData);
@@ -78,12 +90,13 @@ class Leaderboard {
                 console.log(`Wins updated for ${username} from ${doc.data().wins || 0} to ${newData.wins}`);
                 return true;
             } else {
-                console.log('Creating new user entry...');
+                console.log('Creating new user entry for authenticated user...');
                 // New user, create their first win entry
                 const newUserData = {
                     username: username,
                     wins: 1,
-                    uid: user ? user.uid : 'anonymous',  // Track the user's ID
+                    uid: user.uid,
+                    email: user.email, // Store email for verification
                     lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 await userDoc.set(newUserData);
@@ -92,8 +105,7 @@ class Leaderboard {
             }
         } catch (error) {
             console.error('Error updating wins:', error);
-            console.error('Error details:', error.message);
-            return false;
+            return { updated: false, reason: 'error', message: error.message };
         }
     }
 
@@ -145,8 +157,9 @@ class Leaderboard {
 
             leaderboardElement.innerHTML = '';
             
-            // If user is not authenticated or is anonymous, show sign-in message
-            if (!auth.currentUser || auth.currentUser.isAnonymous) {
+            // Check authentication with strict criteria
+            if (!this.isUserAuthenticated()) {
+                console.log('Not showing leaderboard to non-authenticated user');
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'leaderboard-message';
                 messageDiv.innerHTML = `
@@ -190,7 +203,7 @@ class Leaderboard {
 }
 
 // Initialize Firebase and Leaderboard
-function initializeFirebase() {
+async function initializeFirebase() {
     if (isInitialized) {
         return true;
     }
@@ -200,6 +213,21 @@ function initializeFirebase() {
         if (typeof firebase === 'undefined') {
             console.warn('Firebase not loaded yet');
             return false;
+        }
+
+        // Fetch Firebase config from server if not already loaded
+        if (!firebaseConfig.apiKey) {
+            try {
+                const response = await fetch('/api/firebase-config');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch Firebase config');
+                }
+                firebaseConfig = await response.json();
+                console.log('Firebase config loaded from server');
+            } catch (error) {
+                console.error('Error fetching Firebase config:', error);
+                return false;
+            }
         }
 
         // Initialize Firebase if not already initialized
@@ -234,17 +262,6 @@ function initializeFirebase() {
         // Initialize leaderboard after Firebase is ready
         initializeLeaderboard();
 
-        // Set up anonymous auth if user is not authenticated
-        if (!auth.currentUser) {
-            auth.signInAnonymously()
-                .then(() => {
-                    console.log('Anonymous auth successful');
-                })
-                .catch((error) => {
-                    console.error('Anonymous auth failed:', error);
-                });
-        }
-
         return true;
     } catch (error) {
         console.error("Error initializing Firebase in leaderboard.js:", error);
@@ -262,11 +279,13 @@ function initializeLeaderboard() {
         
         // Set up auth state listener
         auth.onAuthStateChanged((user) => {
-            if (user) {
-                console.log('User is signed in:', user.email);
+            if (user && !user.isAnonymous && user.email) {
+                console.log('Fully authenticated user is signed in:', user.email);
                 leaderboard.updateLeaderboardDisplay();
             } else {
-                console.log('User is signed out');
+                console.log('User is either signed out, anonymous, or lacks email verification');
+                // Still update display to show the sign-in message
+                leaderboard.updateLeaderboardDisplay();
             }
         });
     } catch (error) {
@@ -276,34 +295,46 @@ function initializeLeaderboard() {
 
 // Try to initialize immediately if Firebase is already loaded
 if (typeof firebase !== 'undefined') {
-    initializeFirebase();
+    initializeFirebase().catch(error => {
+        console.error('Failed to initialize Firebase:', error);
+    });
 }
 
 // Also listen for the firebaseReady event as a backup
 document.addEventListener('firebaseReady', () => {
     if (!isInitialized) {
-        initializeFirebase();
+        initializeFirebase().catch(error => {
+            console.error('Failed to initialize Firebase on firebaseReady event:', error);
+        });
     }
 });
 
 // Retry initialization if it fails
 let retryCount = 0;
 const maxRetries = 5;
-function retryInitialization() {
+async function retryInitialization() {
     if (!isInitialized && retryCount < maxRetries) {
         console.log(`Retrying Firebase initialization (attempt ${retryCount + 1}/${maxRetries})`);
         retryCount++;
-        setTimeout(() => {
-            if (initializeFirebase()) {
-                console.log('Firebase initialization successful on retry');
-            } else if (retryCount < maxRetries) {
-                retryInitialization();
+        setTimeout(async () => {
+            try {
+                const success = await initializeFirebase();
+                if (success) {
+                    console.log('Firebase initialization successful on retry');
+                } else if (retryCount < maxRetries) {
+                    retryInitialization();
+                }
+            } catch (error) {
+                console.error('Error during retry:', error);
+                if (retryCount < maxRetries) {
+                    retryInitialization();
+                }
             }
         }, 1000 * retryCount); // Exponential backoff
     }
 }
 
 // Start retry process if initial load fails
-if (!initializeFirebase()) {
+initializeFirebase().catch(() => {
     retryInitialization();
-} 
+});
