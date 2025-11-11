@@ -27,7 +27,9 @@ const elements = {
     currentLobby: document.getElementById('currentLobby'),
     lobbyCode: document.getElementById('lobbyCode'),
     lobbyPlayerList: document.getElementById('lobbyPlayerList'),
-    leaveLobbyBtn: document.getElementById('leaveLobby')
+    leaveLobbyBtn: document.getElementById('leaveLobby'),
+    leaderboardList: document.getElementById('leaderboardList'),
+    leaderboardSection: document.getElementById('leaderboardSection')
 };
 
 let myUsername = null;
@@ -76,34 +78,81 @@ function resetUsernameState() {
 }
 
 function initializeEventListeners() {
-    elements.readyButton.addEventListener('click', handleReadyClick);
-    elements.unreadyButton.addEventListener('click', handleUnreadyClick);
-    elements.joinGameButton.addEventListener('click', handleJoinGameClick);
-    elements.changeUsernameButton.addEventListener('click', handleChangeUsernameClick);
-    elements.wordGuess.addEventListener('input', handleWordGuessInput);
-    elements.wordGuess.addEventListener('keypress', handleWordGuessKeypress);
-    elements.submitGuess.addEventListener('click', handleSubmitGuessClick);
+    // Add null checks for required elements
+    if (!elements.readyButton || !elements.unreadyButton || !elements.joinGameButton || 
+        !elements.changeUsernameButton || !elements.wordGuess || !elements.submitGuess) {
+        console.error('Required game elements not found. Some features may not work.');
+    }
+    
+    if (elements.readyButton) {
+        elements.readyButton.addEventListener('click', handleReadyClick);
+    }
+    if (elements.unreadyButton) {
+        elements.unreadyButton.addEventListener('click', handleUnreadyClick);
+    }
+    if (elements.joinGameButton) {
+        elements.joinGameButton.addEventListener('click', handleJoinGameClick);
+    }
+    if (elements.changeUsernameButton) {
+        elements.changeUsernameButton.addEventListener('click', handleChangeUsernameClick);
+    }
+    if (elements.wordGuess) {
+        elements.wordGuess.addEventListener('input', handleWordGuessInput);
+        elements.wordGuess.addEventListener('keypress', handleWordGuessKeypress);
+    }
+    if (elements.submitGuess) {
+        elements.submitGuess.addEventListener('click', handleSubmitGuessClick);
+    }
     
     // Lobby event listeners
-    elements.createLobbyBtn.addEventListener('click', () => {
-        socket.emit('createLobby');
-    });
+    if (elements.createLobbyBtn) {
+        elements.createLobbyBtn.addEventListener('click', () => {
+            socket.emit('createLobby');
+        });
+    }
     
-    elements.joinLobbyBtn.addEventListener('click', () => {
-        const lobbyId = elements.lobbyCodeInput.value.trim().toUpperCase();
-        if (lobbyId) {
-            socket.emit('joinLobby', lobbyId);
-        } else {
-            showMessage('Please enter a lobby code');
-        }
-    });
+    if (elements.joinLobbyBtn) {
+        elements.joinLobbyBtn.addEventListener('click', () => {
+            const joinLobbyInput = document.getElementById('joinLobbyInput');
+            if (joinLobbyInput && joinLobbyInput.style.display === 'none') {
+                joinLobbyInput.style.display = 'block';
+                if (elements.lobbyCodeInput) {
+                    elements.lobbyCodeInput.focus();
+                }
+            } else {
+                if (elements.lobbyCodeInput) {
+                    const lobbyId = elements.lobbyCodeInput.value.trim().toUpperCase();
+                    if (lobbyId) {
+                        socket.emit('joinLobby', lobbyId);
+                        if (joinLobbyInput) {
+                            joinLobbyInput.style.display = 'none';
+                        }
+                    } else {
+                        showMessage('Please enter a lobby code');
+                    }
+                }
+            }
+        });
+    }
     
-    elements.leaveLobbyBtn.addEventListener('click', () => {
-        socket.emit('leaveLobby');
-    });
+    if (elements.leaveLobbyBtn) {
+        elements.leaveLobbyBtn.addEventListener('click', () => {
+            socket.emit('leaveLobby');
+        });
+    }
 }
 
+// Track if socket handlers have been initialized to prevent duplicates
+let socketHandlersInitialized = false;
+
 function initializeSocketEventHandlers() {
+    // Prevent duplicate event handler registration
+    if (socketHandlersInitialized) {
+        console.warn('Socket event handlers already initialized. Skipping duplicate registration.');
+        return;
+    }
+    socketHandlersInitialized = true;
+    
     socket.on('playerTyping', handlePlayerTyping);
     socket.on('usernameError', handleUsernameError);
     socket.on('usernameSet', handleUsernameSet);
@@ -154,12 +203,23 @@ function initializeSocketEventHandlers() {
     
     // Add reconnection handling
     socket.on('disconnect', () => {
+        // Clear typing timeout on disconnect
+        if (typingTimeout) {
+            clearTimeout(typingTimeout);
+            typingTimeout = null;
+        }
         showMessage('Connection lost. Attempting to reconnect...');
     });
     
     socket.on('connect', () => {
         // Clear any existing state on connect/reconnect
         resetUsernameState();
+        
+        // Clear typing timeout on reconnect
+        if (typingTimeout) {
+            clearTimeout(typingTimeout);
+            typingTimeout = null;
+        }
         
         // Clear any stored username
         try {
@@ -175,13 +235,16 @@ function initializeSocketEventHandlers() {
     });
     
     // Handle free skip button
-    document.getElementById('freeSkip').addEventListener('click', function () {
-        if (!hasUsedSkip) {
-            socket.emit('freeSkip');
-            hasUsedSkip = true;
-            document.getElementById('freeSkip').disabled = true;
-        }
-    });
+    const freeSkipBtn = document.getElementById('freeSkip');
+    if (freeSkipBtn) {
+        freeSkipBtn.addEventListener('click', function () {
+            if (!hasUsedSkip) {
+                socket.emit('freeSkip');
+                hasUsedSkip = true;
+                freeSkipBtn.disabled = true;
+            }
+        });
+    }
     
     // Lobby event handlers
     socket.on('lobbyCreated', (lobbyId) => {
@@ -214,9 +277,7 @@ function initializeSocketEventHandlers() {
         updateLobbyPlayers(data.players);
     });
     
-    socket.on('lobbyError', (message) => {
-        showMessage(message);
-    });
+    // Note: lobbyError handler is already registered above (line 166), so this duplicate is removed
     
     socket.on('lobbyLeft', () => {
         currentLobbyId = null;
@@ -280,7 +341,7 @@ function updateScoreBoard(scores, lives) {
         typingStatus.id = `typingDisplay_${username}`;
         typingStatus.classList.add('typing-status');
         playerScoreElement.appendChild(typingStatus);
-        scoreBoard.appendChild(playerScoreElement);
+        elements.scoreBoard.appendChild(playerScoreElement);
     }
 }
 
@@ -369,6 +430,7 @@ function handleSubmitGuessClick() {
 
 function handlePlayerTyping({ username, text }) {
     const typingDisplayElement = document.getElementById('globalTypingDisplay');
+    if (!typingDisplayElement) return;
     if (text) {
         typingDisplayElement.textContent = `${username} is typing: ${text}`;
     } else {
@@ -384,6 +446,61 @@ function handleUsernameError(message) {
     elements.usernameInput.value = '';
 }
 
+// Add this function to update the leaderboard display
+async function updateLeaderboard() {
+    if (!window.leaderboard || !elements.leaderboardList) return;
+    
+    try {
+        // Clear the leaderboard
+        elements.leaderboardList.innerHTML = '';
+
+        // If user is not authenticated, show sign-in message
+        if (!window.leaderboard.isUserAuthenticated()) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('leaderboard-message');
+            messageDiv.innerHTML = `
+                <p>Sign in with Google to:</p>
+                <ul>
+                    <li>Track your high scores</li>
+                    <li>Compete on the leaderboard</li>
+                    <li>Save your game statistics</li>
+                </ul>
+            `;
+            elements.leaderboardList.appendChild(messageDiv);
+            return;
+        }
+
+        // Get and display top players
+        const topPlayers = await window.leaderboard.getTopPlayers(10);
+        
+        topPlayers.forEach((player, index) => {
+            const entry = document.createElement('div');
+            entry.classList.add('leaderboard-entry');
+            
+            const rank = document.createElement('span');
+            rank.classList.add('rank');
+            rank.textContent = `#${index + 1}`;
+            
+            const username = document.createElement('span');
+            username.classList.add('username');
+            username.textContent = player.username;
+            
+            const score = document.createElement('span');
+            score.classList.add('score');
+            score.textContent = `Wins: ${player.wins || 0}`;
+            
+            entry.appendChild(rank);
+            entry.appendChild(username);
+            entry.appendChild(score);
+            
+            elements.leaderboardList.appendChild(entry);
+        });
+    } catch (error) {
+        console.error('Error updating leaderboard:', error);
+    }
+}
+
+// Modify handleUsernameSet to update leaderboard when username is set
 function handleUsernameSet(username) {
     myUsername = username;
     elements.usernameInput.value = username;
@@ -391,6 +508,11 @@ function handleUsernameSet(username) {
     elements.joinGameButton.style.display = 'none';
     elements.changeUsernameButton.style.display = 'inline';
     elements.lobbyControls.style.display = 'block';
+    
+    // Update leaderboard when username is set
+    if (window.leaderboard) {
+        window.leaderboard.updateLeaderboardDisplay();
+    }
     
     // Store username in localStorage
     try {
@@ -455,48 +577,136 @@ function handleGameOver() {
     isGameOver = true;
 }
 
-function handleGameWin(winnerUsername) {
-    console.log('Game win event received for winner:', winnerUsername);
+// Modify handleGameWin to update leaderboard after game ends
+// Store modal click handler reference for cleanup
+let modalClickHandler = null;
+
+function handleGameWin(winner) {
+    isGameOver = true;
+    gameInProgress = false;
+    window.gameInProgress = false;
     
-    // Disable game controls
+    console.log('Game won by:', winner);
+    
+    // Get the winner modal elements
+    const modal = document.getElementById('winnerModal');
+    const winnerName = document.getElementById('winnerName');
+    
+    // Update the modal content
+    if (modal && winnerName) {
+        winnerName.textContent = winner;
+        modal.style.display = 'block';
+    }
+    
+    // Update leaderboard for the winner
+    const leaderboard = window.getLeaderboard();
+    if (leaderboard) {
+        // Only update the winner's win count
+        console.log('Attempting to update win count for winner:', winner);
+        leaderboard.updateScore(winner)
+            .then((result) => {
+                console.log('Win update result:', result);
+                // Check if result is true (successful update) or an object (contains error info)
+                if (result === true) {
+                    console.log('Win recorded successfully for', winner);
+                } else if (result && result.reason === 'guest-user') {
+                    console.log('Guest user win - not recorded in leaderboard');
+                } else {
+                    console.error('Failed to record win for', winner, '- Reason:', result?.reason || 'unknown');
+                }
+                
+                // Update the leaderboard display regardless of result
+                return leaderboard.updateLeaderboardDisplay();
+            })
+            .then(() => {
+                console.log('Leaderboard display updated');
+            })
+            .catch(error => {
+                console.error('Error in win recording process for', winner, ':', error);
+            });
+    } else {
+        console.error('Leaderboard instance not found');
+    }
+    
+    // Reset game UI elements
     elements.wordGuess.disabled = true;
     elements.submitGuess.disabled = true;
     
-    // Update modal content
-    document.getElementById('winnerName').textContent = winnerUsername;
+    // Show message
+    showMessage(`Game Over! ${winner} wins!`);
     
-    // Show the modal
-    const modal = document.getElementById('winnerModal');
-    modal.style.display = "block";
+    // Remove previous modal click handler if it exists
+    if (modalClickHandler) {
+        window.removeEventListener('click', modalClickHandler);
+        modalClickHandler = null;
+    }
     
-    // Use proper event delegation instead of recreating the button
-    document.getElementById('resetGame').onclick = function() {
-        console.log('Reset game button clicked');
-        socket.emit('resetGameRequest');
-        modal.style.display = "none";
-        resetFrontendUI();
-    };
+    // Add event listener to close the modal
+    const closeSpan = document.getElementsByClassName('close')[0];
+    if (closeSpan) {
+        // Remove previous handler if exists
+        closeSpan.onclick = null;
+        closeSpan.onclick = function() {
+            if (modal) modal.style.display = 'none';
+            if (modalClickHandler) {
+                window.removeEventListener('click', modalClickHandler);
+                modalClickHandler = null;
+            }
+        };
+    }
     
-    // Also allow clicking outside the modal to close it
-    window.onclick = function(event) {
-        if (event.target === modal) {
-            modal.style.display = "none";
+    // Add reset game functionality
+    const resetButton = document.getElementById('resetGame');
+    if (resetButton) {
+        // Remove previous handler if exists
+        resetButton.onclick = null;
+        resetButton.onclick = function() {
+            console.log('Reset game button clicked');
             socket.emit('resetGameRequest');
+            if (modal) modal.style.display = 'none';
+            if (modalClickHandler) {
+                window.removeEventListener('click', modalClickHandler);
+                modalClickHandler = null;
+            }
             resetFrontendUI();
-        }
-    };
+        };
+    }
+    
+    // Close modal when clicking outside - use addEventListener to prevent memory leak
+    if (modal) {
+        modalClickHandler = function(event) {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+                socket.emit('resetGameRequest');
+                resetFrontendUI();
+                // Remove the handler after use
+                window.removeEventListener('click', modalClickHandler);
+                modalClickHandler = null;
+            }
+        };
+        window.addEventListener('click', modalClickHandler);
+    }
 }
 
 function handleTurnUpdate(currentTurnUsername) {
     const isMyTurn = myUsername === currentTurnUsername;
     elements.wordGuess.disabled = !isMyTurn;
     elements.submitGuess.disabled = !isMyTurn;
-    document.getElementById('freeSkip').disabled = !isMyTurn || hasUsedSkip; // Enable free skip only if it's their turn and they haven't used it yet.
-    document.getElementById('currentTurn').textContent = currentTurnUsername;
+    const freeSkipBtn = document.getElementById('freeSkip');
+    if (freeSkipBtn) {
+        freeSkipBtn.disabled = !isMyTurn || hasUsedSkip; // Enable free skip only if it's their turn and they haven't used it yet.
+    }
+    const currentTurnElement = document.getElementById('currentTurn');
+    if (currentTurnElement) {
+        currentTurnElement.textContent = currentTurnUsername;
+    }
 }
 
 function clearGlobalTypingDisplay() {
-    document.getElementById('globalTypingDisplay').textContent = '';
+    const typingDisplayElement = document.getElementById('globalTypingDisplay');
+    if (typingDisplayElement) {
+        typingDisplayElement.textContent = '';
+    }
 }
 
 function handleWordGuessKeypress(event) {
@@ -508,6 +718,7 @@ function handleWordGuessKeypress(event) {
 
 function updateTimerDisplay(time) {
     const timerElement = document.getElementById('timerDisplay');
+    if (!timerElement) return;
     if (time !== null) {
         timerElement.textContent = `Time left: ${time}s`;
     } else {
@@ -523,9 +734,17 @@ function clearInputAndTypingStatus() {
 
 function showMessage(message) {
     const messageBox = document.getElementById('messageBox');
+    if (!messageBox) {
+        console.warn('Message box element not found');
+        return;
+    }
     messageBox.innerText = message;
     messageBox.style.display = 'block';
-    setTimeout(() => messageBox.style.display = 'none', 3000);
+    setTimeout(() => {
+        if (messageBox) {
+            messageBox.style.display = 'none';
+        }
+    }, 3000);
 }
 
 // Make sure the modal CSS is correct
@@ -548,12 +767,28 @@ function resetFrontendUI() {
     elements.readyButton.disabled = false;
     elements.unreadyButton.disabled = true;
     elements.wordGuess.value = '';
-    document.getElementById('currentTurn').textContent = '';
-    document.getElementById('letterDisplay').textContent = '';
-    document.getElementById('scoreBoard').innerHTML = '';
-    document.getElementById('playerList').innerHTML = '';
-    document.getElementById('globalTypingDisplay').textContent = '';
-    document.getElementById('timerDisplay').textContent = '';
+    const currentTurnElement = document.getElementById('currentTurn');
+    if (currentTurnElement) currentTurnElement.textContent = '';
+    if (elements.letterDisplay) elements.letterDisplay.textContent = '';
+    if (elements.scoreBoard) elements.scoreBoard.innerHTML = '';
+    if (elements.playerList) elements.playerList.innerHTML = '';
+    const globalTypingDisplay = document.getElementById('globalTypingDisplay');
+    if (globalTypingDisplay) globalTypingDisplay.textContent = '';
+    const timerDisplay = document.getElementById('timerDisplay');
+    if (timerDisplay) timerDisplay.textContent = '';
+    
+    // Clean up modal click handler
+    if (modalClickHandler) {
+        window.removeEventListener('click', modalClickHandler);
+        modalClickHandler = null;
+    }
+    
+    // Hide winner modal if it's open
+    const modal = document.getElementById('winnerModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    
     isGameOver = false;
     gameInProgress = false;
     window.gameInProgress = false; // Update window object
@@ -565,6 +800,8 @@ function resetFrontendUI() {
         elements.lobbyCode.textContent = '';
         elements.lobbyPlayerList.innerHTML = '';
         updateLobbyControlsVisibility(false);
+        // Update leaderboard when returning to lobby
+        updateLeaderboard();
     } else {
         updateLobbyControlsVisibility(true);
     }
