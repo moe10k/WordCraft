@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Letter Guess Game</title>
+    <title>WordCraft</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -24,68 +24,101 @@
 
     <!-- Auth Overlay -->
     <div id="authOverlay">
-        <div class="auth-container">
-            <h2>Welcome to Letter Guess Game</h2>
-            <p>Sign in to play with friends!</p>
-            <button id="googleSignIn" class="auth-button">Sign in with Google</button>
-            <button id="guestSignIn" class="auth-button secondary">Continue as Guest</button>
+        <div class="auth-container card">
+            <h2 class="app-title">Welcome to WordCraft</h2>
+            <p class="muted">Sign in to play with friends</p>
+            <button id="googleSignIn" class="btn btn-primary btn-block">Sign in with Google</button>
+            <button id="guestSignIn" class="btn btn-secondary btn-block">Continue as Guest</button>
         </div>
     </div>
 
-    <div id="leftSidebar">
-        <div id="scoreBoard"></div>
-        <div id="livesDisplay"></div>
-        <div id="userProfile">
-            <span id="profileName"></span>
-            <button id="signOutBtn" style="display: none;">Sign Out</button>
-        </div>
-    </div>
-
-    <div id="usernameScreen">
-        <input type="text" id="usernameInput" placeholder="Enter your username">
-        <button id="joinGame">Set Username</button>
-        <button id="changeUsername" style="display: none;">Change Username</button>
-        
-        <div id="lobbyControls" style="display: none;">
-            <div class="lobby-buttons">
-                <button id="joinLobby">Join Lobby</button>
-                <div id="joinLobbyInput" style="display: none;">
-                    <input type="text" id="lobbyCodeInput" placeholder="Enter Lobby Code">
+    <!-- App Header -->
+    <header class="app-header">
+        <div class="header-inner">
+            <div class="brand">
+                <div class="logo">W</div>
+                <div class="brand-text">
+                    <h1 class="brand-title">WordCraft</h1>
+                    <p class="brand-tag muted">Play. Guess. Win.</p>
                 </div>
-                <div class="divider">or</div>
-                <button id="createLobby">Create Lobby</button>
             </div>
-            <div id="currentLobby" style="display: none;">
-                <h3>Lobby: <span id="lobbyCode"></span></h3>
-                <div id="lobbyPlayerList"></div>
-                <div class="lobby-ready-controls">
-                    <button id="readyButton" style="display: none;">Ready</button>
-                    <button id="unreadyButton" style="display: none;" disabled>Unready</button>
-                </div>
-                <button id="leaveLobby">Leave Lobby</button>
-            </div>
-            <div id="leaderboardSection" class="leaderboard-section">
-                <h3>Global Leaderboard</h3>
-                <div id="leaderboardList"></div>
+            <div id="userProfile" class="user-profile">
+                <span id="profileName" class="profile-name"></span>
+                <button id="signOutBtn" class="btn btn-ghost" style="display: none;">Sign out</button>
             </div>
         </div>
-        
-        <div id="playerList"></div>
+    </header>
+
+    <div class="app-shell" id="appShell">
+        <aside id="leftSidebar" class="sidebar card" style="display: none;">
+            <h3 class="section-title">Players</h3>
+            <div id="scoreBoard" class="scoreboard"></div>
+            <div id="livesDisplay" class="lives"></div>
+        </aside>
+
+        <main class="main">
+            <div class="menu-grid" id="menuGrid">
+                <section id="usernameScreen" class="panel card">
+                    <h2 class="section-title">Choose a username</h2>
+                    <p class="muted">Pick a name to show in lobbies and games.</p>
+                    <div class="form-row">
+                        <input type="text" id="usernameInput" class="input" placeholder="Enter your username">
+                        <div class="actions">
+                            <button id="joinGame" class="btn btn-primary">Set username</button>
+                            <button id="changeUsername" class="btn btn-secondary" style="display: none;">Change username</button>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel card" id="lobbyPanel">
+                    <div id="lobbyControls" class="lobby" style="display: none;">
+                        <h3 class="section-title">Play with friends</h3>
+                        <div class="lobby-buttons">
+                            <button id="joinLobby" class="btn btn-primary">Join lobby</button>
+                            <div id="joinLobbyInput" class="join-lobby-input" style="display: none;">
+                                <input type="text" id="lobbyCodeInput" class="input" placeholder="Enter lobby code">
+                            </div>
+                            <div class="divider">or</div>
+                            <button id="createLobby" class="btn btn-outline">Create lobby</button>
+                        </div>
+                        <div id="currentLobby" class="current-lobby" style="display: none;">
+                            <h3>Lobby: <span id="lobbyCode"></span></h3>
+                            <div id="lobbyPlayerList"></div>
+                            <div class="lobby-ready-controls">
+                                <button id="readyButton" class="btn btn-success" style="display: none;">Ready</button>
+                                <button id="unreadyButton" class="btn btn-danger" style="display: none;" disabled>Unready</button>
+                            </div>
+                            <button id="leaveLobby" class="btn btn-danger">Leave lobby</button>
+                        </div>
+                        <div id="playerList" class="player-list"></div>
+                    </div>
+                </section>
+
+                <section id="leaderboardSection" class="panel card leaderboard-section">
+                    <h3>Global Leaderboard</h3>
+                    <div id="leaderboardList"></div>
+                </section>
+            </div>
+
+            <section id="game" class="panel card" style="display: none;">
+                <div id="currentTurnDisplay" class="info-banner">Current Turn: <span id="currentTurn"></span></div>
+                <div id="letters" class="letters">Letters: <span id="letterDisplay"></span></div>
+                <div class="form-row">
+                    <input type="text" id="wordGuess" class="input" placeholder="Enter your guess">
+                    <div class="actions">
+                        <button id="submitGuess" class="btn btn-primary">Submit guess</button>
+                        <button id="freeSkip" class="btn btn-outline" disabled>Free skip</button>
+                    </div>
+                </div>
+                <div id="player-statuses"><!-- Player statuses will be dynamically inserted here --></div>
+                <div id="playerTypingStatus"></div>
+                <div id="globalTypingDisplay" class="typing-display"></div>
+                <div id="timerDisplay" class="timer"></div>
+            </section>
+        </main>
     </div>
 
-    <div id="game" style="display: none;">
-        <div id="currentTurnDisplay">Current Turn: <span id="currentTurn"></span></div>
-        <div id="letters">Letters: <span id="letterDisplay"></span></div>
-        <input type="text" id="wordGuess" placeholder="Enter your guess">
-        <button id="submitGuess">Submit Guess</button>
-        <button id="freeSkip" disabled>Free Skip</button>
-        <div id="player-statuses"><!-- Player statuses will be dynamically inserted here --></div>
-        <div id="playerTypingStatus"></div>
-        <div id="globalTypingDisplay" class="typing-display"></div>
-        <div id="timerDisplay"></div>
-    </div>
-
-    <div id="messageBox" style="display:none;"></div>
+    <div id="messageBox" class="toast" style="display:none;"></div>
 
 
     <!-- The Modal -->
@@ -101,13 +134,13 @@
                 <p>Your score has been recorded on the leaderboard.</p>
             </div>
             <div class="modal-footer">
-                <button id="resetGame">Play Again</button>
+                <button id="resetGame">Play again</button>
             </div>
         </div>
     </div>
 
     <div class="container">
-        <div class="bottom-right-text">V3.2</div>
+        <div class="bottom-right-text">V3.4</div>
     </div>
 
 

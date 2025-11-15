@@ -7,10 +7,13 @@ const socket = window.socket;
 
 const elements = {
     usernameScreen: document.getElementById('usernameScreen'),
+    appShell: document.getElementById('appShell'),
     usernameInput: document.getElementById('usernameInput'),
     joinGameButton: document.getElementById('joinGame'),
     changeUsernameButton: document.getElementById('changeUsername'),
     gameScreen: document.getElementById('game'),
+    leftSidebar: document.getElementById('leftSidebar'),
+    menuGrid: document.getElementById('menuGrid'),
     letterDisplay: document.getElementById('letterDisplay'),
     wordGuess: document.getElementById('wordGuess'),
     submitGuess: document.getElementById('submitGuess'),
@@ -66,6 +69,8 @@ function resetUsernameState() {
     // Show username screen and hide game screen
     elements.usernameScreen.style.display = 'block';
     elements.gameScreen.style.display = 'none';
+    if (elements.leftSidebar) elements.leftSidebar.style.display = 'none';
+    if (elements.appShell) elements.appShell.classList.remove('with-sidebar');
     
     // Reset lobby-related state
     currentLobbyId = null;
@@ -547,6 +552,9 @@ function handleGameUpdate(data) {
         if (gameInProgress) {
             elements.gameScreen.style.display = 'block';
             elements.usernameScreen.style.display = 'none';
+            if (elements.menuGrid) elements.menuGrid.style.display = 'none';
+            if (elements.leftSidebar) elements.leftSidebar.style.display = 'flex';
+            if (elements.appShell) elements.appShell.classList.add('with-sidebar');
             elements.letterDisplay.textContent = data.letters || '';
             
             // Only update score/lives display if we're in a game
@@ -563,6 +571,9 @@ function handleGameUpdate(data) {
             if (window.setAuthUIVisibility) {
                 window.setAuthUIVisibility(true, false);
             }
+            if (elements.menuGrid) elements.menuGrid.style.display = '';
+            if (elements.leftSidebar) elements.leftSidebar.style.display = 'none';
+            if (elements.appShell) elements.appShell.classList.remove('with-sidebar');
         }
     } catch (error) {
         console.error('Error handling game update:', error);
@@ -762,6 +773,9 @@ document.addEventListener('DOMContentLoaded', checkStylesOnLoad);
 function resetFrontendUI() {
     elements.gameScreen.style.display = 'none';
     elements.usernameScreen.style.display = 'block';
+    if (elements.menuGrid) elements.menuGrid.style.display = '';
+    if (elements.leftSidebar) elements.leftSidebar.style.display = 'none';
+    if (elements.appShell) elements.appShell.classList.remove('with-sidebar');
     elements.wordGuess.disabled = false;
     elements.submitGuess.disabled = false;
     elements.readyButton.disabled = false;
