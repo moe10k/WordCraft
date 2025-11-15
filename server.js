@@ -7,11 +7,42 @@ const http = require('http');
 const socketIo = require('socket.io');
 const axios = require('axios');
 const path = require('path');
+const mysql = require('mysql2/promise');
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 app.use(express.static('public'));
+app.use(express.json());
+
+// MySQL connection pool
+let pool;
+async function initMySql() {
+  try {
+    pool = mysql.createPool({
+      host: process.env.MYSQL_HOST || 'localhost',
+      user: process.env.MYSQL_USER || 'root',
+      password: process.env.MYSQL_PASSWORD || '',
+      database: process.env.MYSQL_DATABASE || 'wordcraft',
+      port: process.env.MYSQL_PORT ? Number(process.env.MYSQL_PORT) : 3306,
+      connectionLimit: 10,
+    });
+
+    // Ensure schema exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS scores (
+        username VARCHAR(100) PRIMARY KEY,
+        wins INT NOT NULL DEFAULT 0,
+        uid VARCHAR(64) NULL,
+        email VARCHAR(255) NULL,
+        last_updated TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+    console.log('[MySQL] Connected and ensured scores table exists');
+  } catch (err) {
+    console.error('[MySQL] Initialization error:', err.message);
+  }
+}
 
 // Add endpoint to serve Firebase config securely
 app.get('/api/firebase-config', (req, res) => {
@@ -25,6 +56,69 @@ app.get('/api/firebase-config', (req, res) => {
     measurementId: process.env.FIREBASE_MEASUREMENT_ID
   };
   res.json(firebaseConfig);
+});
+
+// Leaderboard API (MySQL-backed)
+// Get top players
+app.get('/api/leaderboard/top', async (req, res) => {
+  try {
+    const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 10));
+    if (!pool) await initMySql();
+    const [rows] = await pool.query(
+      'SELECT username, wins FROM scores ORDER BY wins DESC, username ASC LIMIT ?;',
+      [limit]
+    );
+    res.json(rows || []);
+  } catch (err) {
+    console.error('[Leaderboard] top error:', err.message);
+    res.status(500).json({ error: 'failed-to-fetch-top' });
+  }
+});
+
+// Increment winner score (insert if new)
+app.post('/api/leaderboard/increment', async (req, res) => {
+  try {
+    const { username, uid, email } = req.body || {};
+    if (!username || typeof username !== 'string') {
+      return res.status(400).json({ error: 'invalid-username' });
+    }
+    if (!pool) await initMySql();
+
+    // Upsert pattern using INSERT ... ON DUPLICATE KEY UPDATE
+    await pool.query(
+      `INSERT INTO scores (username, wins, uid, email)
+       VALUES (?, 1, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         wins = wins + 1,
+         uid = COALESCE(VALUES(uid), uid),
+         email = COALESCE(VALUES(email), email);
+      `,
+      [username, uid || null, email || null]
+    );
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[Leaderboard] increment error:', err.message);
+    res.status(500).json({ error: 'failed-to-increment' });
+  }
+});
+
+// Get single player stats
+app.get('/api/leaderboard/stats/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    if (!username) return res.status(400).json({ error: 'invalid-username' });
+    if (!pool) await initMySql();
+    const [rows] = await pool.query(
+      'SELECT username, wins, uid, email, last_updated FROM scores WHERE username = ? LIMIT 1;',
+      [username]
+    );
+    if (!rows || rows.length === 0) return res.json(null);
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('[Leaderboard] stats error:', err.message);
+    res.status(500).json({ error: 'failed-to-fetch-stats' });
+  }
 });
 
 // Global Variables
@@ -1057,6 +1151,7 @@ io.on('connection', (socket) => {
 
 // Server Initialization
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
     log(`Server is running on port ${PORT}`, 'server.listen');
+    await initMySql();
 });
